@@ -8,7 +8,7 @@ Briefly, our improved method requires an "*unresolved*" VCF as input, in which a
 
 ## Dependencies
 
-# strain_phylogenetics 
+###### strain_phylogenetics 
 
 Install from https://github.com/yatisht/strain_phylogenetics
 
