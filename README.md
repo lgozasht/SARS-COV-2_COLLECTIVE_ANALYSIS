@@ -107,3 +107,9 @@ VCF and "final_table.tsv" (produced by SARS-COV-2_COLLETIVE_ANALYSIS.py)
 | pos | site position |
 | linked site\|r^2 | linked site \| corresponding r^2 value |
 
+### Reference
+
+* Nicola De Maio, Landen Gozashti, Yatish Turakhia, Conor Walker, Robert Lanfear, Russell Corbett-Detig, and Nick Goldman, Issues with SARS-Cov-2 sequencing data: Updated analysis with data from 12th June 2020, Virological [post](https://virological.org/t/issues-with-sars-cov-2-sequencing-data/473/12) 2020.
+
+* Yatish Turakhia, Bryan Thornlow, Landen Gozashti, Angie S. Hinrichs, Jason D. Fernandes, David Haussler, and Russell Corbett-Detig, "Stability of SARS-CoV-2 Phylogenies", bioRxiv [pre-print](https://www.biorxiv.org/content/10.1101/2020.06.08.141127v1) 2020.
+
