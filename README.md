@@ -19,3 +19,16 @@ SARS-COV-2_COLLETIVE_ANALYSIS.py only requires a GISAID metadata file, *unresolv
 ```
 python3 SARS-COV-2_COLLETIVE_ANALYSIS.py [options] -m [Path to GISAID metadata file] -v [Path to VCF file] -tree [Path to newick tree] -o [Path to output directory]
 ```
+
+### Input:
+
+GISAID metadata file, "*unresolved*" VCF and coorresponding newick tree
+
+### Options:
+
+**-min_parsimony *I***: Minimum parsimony (must be an integer) default = 4
+
+**-dependencies**: Check for dependencies
+
+
+
