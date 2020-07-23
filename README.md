@@ -105,5 +105,5 @@ VCF and "final_table.tsv" (produced by SARS-COV-2_COLLETIVE_ANALYSIS.py)
 | ------ | ----------- |
 | snp | snp  |
 | pos | site position |
-| linked site\|r^2 | site stop |
+| linked site\|r^2 | linked site \| corresponding r^2 value |
 
