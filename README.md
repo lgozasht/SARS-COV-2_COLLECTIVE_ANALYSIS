@@ -107,7 +107,7 @@ VCF and "final_table.tsv" (produced by SARS-COV-2_COLLETIVE_ANALYSIS.py)
 | pos | site position |
 | linked site\|r^2 | linked site \| corresponding r^2 value |
 
-### Reference
+### References
 
 * Nicola De Maio, Landen Gozashti, Yatish Turakhia, Conor Walker, Robert Lanfear, Russell Corbett-Detig, and Nick Goldman, Issues with SARS-Cov-2 sequencing data: Updated analysis with data from 12th June 2020, Virological [post](https://virological.org/t/issues-with-sars-cov-2-sequencing-data/473/12) 2020.
 
