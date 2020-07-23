@@ -30,5 +30,32 @@ GISAID metadata file, "*unresolved*" VCF and coorresponding newick tree
 
 **-dependencies**: Check for dependencies
 
+### Output:
+
+**final_table.tsv**:
+
+| Column | Description |
+| ------ | ----------- |
+| Reference | reference genome  |
+| Start | site start |
+| Stop | site stop |
+| Snp | snp |
+| Alt Resolved Parsimony | "alternative resolved" parsimony score |
+| MAC | "alternative resolved" minor allele count |
+| MAF | "alternative resolved" minor allele frequency |
+| Primer Overlap | ARTIC primer overlapping site (NA if none)  |
+| Primer Vicinity | ARTIC primer within 10bp of site (NA if none) |
+| Country | "alternative resolved" country associated with variant (NA if none) |
+| Country Association | "alternative resolved" percent of minor alleles attributed to that country |
+| Lab | "alternative resolved" lab associated with variant (NA if none) |
+| Lab Association | "alternative resolved" percent of minor alleles attributed to that lab |
+| Ref Resolved Parsimony | "parsimony resolved" parsimony score |
+| MAC | "parsimony resolved" minor allele count |
+| MAF | "parsimony resolved" minor allele frequency |
+| Country | "parsimony resolved" country associated with variant (NA if none) |
+| Country Association | "parsimony resolved" percent of minor alleles attributed to that country |
+| Lab | "parsimony resolved" lab associated with variant (NA if none) |
+| Lab Association | "parsimony resolved" percent of minor alleles attributed to that lab |
+| Specific Alt Associations | Specific alt associations populate the remaining columns (depending on how many alternate alleles exist at a given site) |
 
 
