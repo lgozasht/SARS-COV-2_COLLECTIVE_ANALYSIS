@@ -81,7 +81,7 @@ GISAID metadata file, "*unresolved*" VCF and coorresponding newick tree
 
 ## Linkage Disequilibrium Usage
 
-Calculates local LD between variants.
+Calculates local R^2 to identify linked variants.
 
 ```
 python3 local_LD.py [options] -v [Path to VCF file] -table [Path to "final_table.tsv" (produced by SARS-COV-2_COLLETIVE_ANALYSIS.py)]  -o [Path to output directory]
