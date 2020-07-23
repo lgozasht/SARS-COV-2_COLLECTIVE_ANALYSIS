@@ -4,7 +4,9 @@ We previously developed a program in python3 that flags possible lab-associated 
 
 We describe these modifications in detail in https://virological.org/t/issues-with-sars-cov-2-sequencing-data/473/12.
 
-Briefly, our improved method requires an "*unresolved*" VCF as input, in which ambiguities remain unresolved (ambiguities can be a valuable signature of potentially errant alleles). It then performs two independent associations: one after resolving all ambiguous calls as the alternative allele (“alternative resolved”), and one where all ambiguous calls are resolved by parsimony (selecting the reference allele where there are equally parsimonious configurations: “parsimony resolved”). In addition, we added a “country-association” module, using the same methods we previously employed for detecting “lab-associated” variants. Our pipeline also associates **specific** alleles (including ambiguities) with specific labs and countries (i.e. if 99% of "W" allele calls at a given site are attributed to a particular lab, regardless if that lab contributes significantly to the total alternate allele count).
+Briefly, our improved method requires an "*unresolved*" VCF as input, in which ambiguities remain unresolved (ambiguities can be a valuable signature of potentially errant alleles). It then performs two independent associations: one after resolving all ambiguous calls as the alternative allele (“alternative resolved”), and one where all ambiguous calls are resolved by parsimony (selecting the reference allele where there are equally parsimonious configurations: “parsimony resolved”). In addition, we added a “country-association” module, using the same methods we previously employed for detecting “lab-associated” variants. Our pipeline also associates **specific** alleles (including ambiguities) with specific labs and countries (i.e. if 99% of "W" allele calls at a given site are attributed to a particular lab, regardless if that lab contributes significantly to the total alternate allele count). 
+
+We also provide a separate program that identifies local positive linkage disequilibrium (LD) between variants. Local positive LD can be a signature of recurrent error.
 
 ## Dependencies
 
@@ -12,7 +14,11 @@ Briefly, our improved method requires an "*unresolved*" VCF as input, in which a
 
 Install from https://github.com/yatisht/strain_phylogenetics
 
-## Usage
+#### PLINK 2
+
+Install from https://www.cog-genomics.org/plink/2.0/ and add to PATH
+
+## Association Usage
 
 SARS-COV-2_COLLETIVE_ANALYSIS.py only requires a GISAID metadata file, *unresolved* VCF file, and corresponding newick tree as input. The pipeline will automatically "filter" the input VCF file for samples that also exist in the corresponding tree and will produce "filtered_unresolved.vcf" as a result. It will then produce "filtered_resolved_alt.vcf" after resolviong ambiguities as alternate alleles and "filtered_resolved_ref.vcf" after resolving ambiguities using parsimony. Note that the pipeline will not overwrite these files, so to rerun on a new dataset just delete them or remove them from your current working directory.
 
@@ -58,4 +64,46 @@ GISAID metadata file, "*unresolved*" VCF and coorresponding newick tree
 | Lab Association | "parsimony resolved" percent of minor alleles attributed to that lab |
 | Specific Alt Associations | Specific alt associations populate the remaining columns (depending on how many alternate alleles exist at a given site) |
 
+
+**samples_in_latest_tree.txt**: List of samples that exist both in the provided VCF and the corresponding newick tree.
+
+**filtered_unresolved.vcf**: Unresolved VCF containing only samples that exist both in the provided VCF and the corresponding newick tree.
+
+**filtered_unresolved.txt**: Parsimony file corresponding to the unresolved VCF.
+
+**filtered_resolved_alt.vcf**: "Alternate resolved" VCF
+
+**filtered_resolved_alt.txt**: "Alternate resolved" parsimony file
+
+**filtered_resolved_ref.vcf**: "Parsimony resolved" VCF
+
+**filtered_resolved_ref.txt**: "Parsimony resolved" parsimony file
+
+## Linkage Disequilibrium Usage
+
+Calculates local LD between variants.
+
+```
+python3 local_LD.py [options] -v [Path to VCF file] -table [Path to "final_table.tsv" (produced by SARS-COV-2_COLLETIVE_ANALYSIS.py)]  -o [Path to output directory]
+```
+
+### Input:
+
+VCF and "final_table.tsv" (produced by SARS-COV-2_COLLETIVE_ANALYSIS.py)
+
+### Options:
+
+**-range *I***: Max range in which LD will be estimated for a given site (Default = 10bp)
+
+**-dependencies**: Check for dependencies
+
+### Output:
+
+**linked_sites.tsv**: 
+
+| Column | Description |
+| ------ | ----------- |
+| snp | snp  |
+| pos | site position |
+| linked site\|r^2 | site stop |
 
