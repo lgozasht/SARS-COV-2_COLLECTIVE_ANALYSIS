@@ -235,6 +235,7 @@ def specificAlleles(pars, vcf, metadata):
     assocLab = {}
     #print(finalDic)
     #printAll = True
+    
     for ori in subAccessionDic:
         for snp in parsimonySourceDic:
             refCount = 0
@@ -254,7 +255,9 @@ def specificAlleles(pars, vcf, metadata):
                         #if int(parsimonySourceDic[snp][accession]) >1:
                             #print(int(parsimonySourceDic[snp][accession]))
                         #print(alleleX[snp])
-                        if int(parsimonySourceDic[snp][accession]) not in altCount:
+                        if alleleX[snp][int(parsimonySourceDic[snp][accession])] not in altCount:
+
+                       # if int(parsimonySourceDic[snp][accession]) not in altCount:
                             altCount[alleleX[snp][int(parsimonySourceDic[snp][accession])]] = 1
                             #print(altCount)
                         else:
@@ -298,7 +301,9 @@ def specificAlleles(pars, vcf, metadata):
                     if int(parsimonySourceDic[snp][accession]) == 0:
                         refCount += 1
                     elif int(parsimonySourceDic[snp][accession]) > 0:
-                        if int(parsimonySourceDic[snp][accession]) not in altCount:
+                        if alleleX[snp][int(parsimonySourceDic[snp][accession])] not in altCount:
+
+                        #if int(parsimonySourceDic[snp][accession]) not in altCount:
                             altCount[alleleX[snp][int(parsimonySourceDic[snp][accession])]] = 1 
                         else: 
                             altCount[alleleX[snp][int(parsimonySourceDic[snp][accession])]] += 1 
@@ -325,6 +330,7 @@ def specificAlleles(pars, vcf, metadata):
                         pass
                 except KeyError:
                     pass
+    
     countryDic = {}
     for ori in countryAccessionDic:
         for snp in parsimonySourceDic:
@@ -335,9 +341,12 @@ def specificAlleles(pars, vcf, metadata):
                     if int(parsimonySourceDic[snp][accession]) == 0:
                         refCount += 1
                     elif int(parsimonySourceDic[snp][accession]) > 0:
-                        if int(parsimonySourceDic[snp][accession]) not in altCount:
+                        if alleleX[snp][int(parsimonySourceDic[snp][accession])] not in altCount:
+
+                        #if int(parsimonySourceDic[snp][accession]) not in altCount:
                             altCount[alleleX[snp][int(parsimonySourceDic[snp][accession])]] = 1 
                         else: 
+
                             altCount[alleleX[snp][int(parsimonySourceDic[snp][accession])]] += 1 
 
                 except KeyError:
@@ -345,12 +354,18 @@ def specificAlleles(pars, vcf, metadata):
             for allele in altCount:
                 try:
                     if altCount[allele] > 0 and int(globalAltCountDic[snp][allele]) > 0:
+                        #print('altCount passes')
 
                         if snp not in countryDic and (float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0 > 80.0:
                             countryDic[snp] = {}
                             countryDic[snp][allele] = [ori,str((float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0)]
-                        elif allele not in countryDic[snp]:
+                       #     print('snp not in countryDic',ori,str((float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0))
+                        elif allele not in countryDic[snp] and (float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0 > 80.0:
                             countryDic[snp][allele] = [ori,str((float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0)]
+                        #    print('allele not in countryDic[snp]',ori,str((float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0))
+                        elif  (float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0 > 80.0:
+                            countryDic[snp][allele] = [ori,str((float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0)]
+
 
 
                 except KeyError:
@@ -716,7 +731,7 @@ def associate(inputType, vcf, pars, meta, missingDic):
                                 'parsimonyDic':parsimonyDic[pos].strip('\n'), 'globalAltCountDic':str(globalAltCountDic[snp]),
                                 'mafDic':str(mafDic[snp]),'primeroverlap':primeroverlap,'primer':primer,'countryOri':countryOri,'countryAt':countryAt,
                                 'assoc':assoc,'assocValue':assocValue}
-    print(dataDic)
+    #print(dataDic)
     return dataDic, finalDic
 
 
