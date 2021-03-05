@@ -109,7 +109,7 @@ VCF and "final_table.tsv" (produced by SARS-COV-2_COLLETIVE_ANALYSIS.py)
 
 ### References
 
-* Nicola De Maio, Landen Gozashti, Yatish Turakhia, Conor Walker, Robert Lanfear, Russell Corbett-Detig, and Nick Goldman, Issues with SARS-Cov-2 sequencing data: Updated analysis with data from 12th June 2020, Virological [post](https://virological.org/t/issues-with-sars-cov-2-sequencing-data/473/12) 2020.
+* Landen Gozashti, Conor Walker, Nick Goldman, Russell Corbett-Detig, and Nicola De Maio, Issues with SARS-Cov-2 sequencing data: Updated analysis with data from 13th November 2020, Virological [post](https://virological.org/t/issues-with-sars-cov-2-sequencing-data/473/14) 2020.
 
 * Yatish Turakhia, Nicola De Maio, Bryan Thornlow, Landen Gozashti, Robert Lanfear, Conor R. Walker, Angie S. Hinrichs, Jason D. Fernandes, Rui Borges, Greg Slodkowicz, Lukas Weilguny, David Haussler, Nick Goldman and Russell Corbett-Detig, "Stability of SARS-CoV-2 Phylogenies", PLOS Genetics 2020 (https://doi.org/10.1371/journal.pgen.1009175).
 
