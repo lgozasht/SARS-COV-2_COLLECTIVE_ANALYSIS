@@ -1,3 +1,4 @@
+
 import os 
 import argparse 
 import threading
@@ -78,10 +79,17 @@ def specificAlleles(pars, vcf, metadata):
                         else:
                             i = 2
                             pos = sp[0][1:-1]
-                        
+
+                        '''
+                        Issue-2
+                        '''
+                        print(line)
                         try:
+                            
                             if int(sp[i].split('=')[1]) >= int(args['min_parsimony']):
                                 parsimonyDic[pos] = str(sp[i].split('=')[1])
+
+
                         except ValueError:
                             print('Warning: possible issue in parsimony output for {0}'.format(sp[0]))
                     except IndexError:
@@ -235,7 +243,6 @@ def specificAlleles(pars, vcf, metadata):
     assocLab = {}
     #print(finalDic)
     #printAll = True
-    
     for ori in subAccessionDic:
         for snp in parsimonySourceDic:
             refCount = 0
@@ -255,9 +262,7 @@ def specificAlleles(pars, vcf, metadata):
                         #if int(parsimonySourceDic[snp][accession]) >1:
                             #print(int(parsimonySourceDic[snp][accession]))
                         #print(alleleX[snp])
-                        if alleleX[snp][int(parsimonySourceDic[snp][accession])] not in altCount:
-
-                       # if int(parsimonySourceDic[snp][accession]) not in altCount:
+                        if int(parsimonySourceDic[snp][accession]) not in altCount:
                             altCount[alleleX[snp][int(parsimonySourceDic[snp][accession])]] = 1
                             #print(altCount)
                         else:
@@ -301,9 +306,7 @@ def specificAlleles(pars, vcf, metadata):
                     if int(parsimonySourceDic[snp][accession]) == 0:
                         refCount += 1
                     elif int(parsimonySourceDic[snp][accession]) > 0:
-                        if alleleX[snp][int(parsimonySourceDic[snp][accession])] not in altCount:
-
-                        #if int(parsimonySourceDic[snp][accession]) not in altCount:
+                        if int(parsimonySourceDic[snp][accession]) not in altCount:
                             altCount[alleleX[snp][int(parsimonySourceDic[snp][accession])]] = 1 
                         else: 
                             altCount[alleleX[snp][int(parsimonySourceDic[snp][accession])]] += 1 
@@ -330,7 +333,6 @@ def specificAlleles(pars, vcf, metadata):
                         pass
                 except KeyError:
                     pass
-    
     countryDic = {}
     for ori in countryAccessionDic:
         for snp in parsimonySourceDic:
@@ -341,12 +343,9 @@ def specificAlleles(pars, vcf, metadata):
                     if int(parsimonySourceDic[snp][accession]) == 0:
                         refCount += 1
                     elif int(parsimonySourceDic[snp][accession]) > 0:
-                        if alleleX[snp][int(parsimonySourceDic[snp][accession])] not in altCount:
-
-                        #if int(parsimonySourceDic[snp][accession]) not in altCount:
+                        if int(parsimonySourceDic[snp][accession]) not in altCount:
                             altCount[alleleX[snp][int(parsimonySourceDic[snp][accession])]] = 1 
                         else: 
-
                             altCount[alleleX[snp][int(parsimonySourceDic[snp][accession])]] += 1 
 
                 except KeyError:
@@ -354,18 +353,12 @@ def specificAlleles(pars, vcf, metadata):
             for allele in altCount:
                 try:
                     if altCount[allele] > 0 and int(globalAltCountDic[snp][allele]) > 0:
-                        #print('altCount passes')
 
                         if snp not in countryDic and (float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0 > 80.0:
                             countryDic[snp] = {}
                             countryDic[snp][allele] = [ori,str((float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0)]
-                       #     print('snp not in countryDic',ori,str((float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0))
-                        elif allele not in countryDic[snp] and (float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0 > 80.0:
+                        elif allele not in countryDic[snp]:
                             countryDic[snp][allele] = [ori,str((float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0)]
-                        #    print('allele not in countryDic[snp]',ori,str((float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0))
-                        elif  (float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0 > 80.0:
-                            countryDic[snp][allele] = [ori,str((float(altCount[allele])/float(globalAltCountDic[snp][allele]))*100.0)]
-
 
 
                 except KeyError:
@@ -518,10 +511,12 @@ def associate(inputType, vcf, pars, meta, missingDic):
                         #print('missing alt alleles',test0,'\n','alt alleles',test1)
 
                         info = cols[7]
-                        infoParts = dict([ part.split('=') for part in info.split(';')  ])
-                        if ('AACHANGE' in infoParts):
-                            aaChangeDic[mut] = infoParts['AACHANGE']
-
+                        try:
+                            infoParts = dict([ part.split('=') for part in info.split(';')  ])
+                            if ('AACHANGE' in infoParts):
+                                aaChangeDic[mut] = infoParts['AACHANGE']
+                        except ValueError:
+                            pass
     print('VCF took {0} seconds'.format(time.time() - start_time))
 
     oriParsCountDic = {}
@@ -746,6 +741,7 @@ def replaceGenotype(cols,replacements,alts):
             return cols
 
     except KeyError:
+        print('Key Error in replaceGenotype')
         print(altDic,cols[0:9])
     return [str(x) for x in cols[0:9]+genotypes.split(',')]
 
@@ -764,6 +760,7 @@ def resolve_alt():
     else:
 
         ambDic = {"N": {"A":'', "C":'', "G":'', "T":''},
+         "X": {"A":'', "C":'', "G":'', "T":''},
          "R": {"A":'', "G":''},
          "Y": {"T":'', "C":''},
          "K": {"G":'', "T":''},
@@ -807,10 +804,12 @@ def resolve_alt():
                                 foundAlt = True
                         updatedCols = cols
                         if len(reorganizeAlleleDic.keys()) == len(altList):
-                            resolved.write(line)
+                            if '1078' in line:
+                                print(line) 
+                            resolved.write(line.replace(cols[7],'AC=0;{0}'.format(ref)))
+                            
                             continue
                         elif foundAlt == True:
-                    
                             for i in range(0,len(altList)):
                                 if altList[i] not in normalDic:
                                     found = False
@@ -858,34 +857,80 @@ def resolve_alt():
                             newCols = updatedCols
 
                         else:
+
                             for alt in ambDic[altList[0]]:
                                 if alt not in cols[3]:
 
                                     altCount = sum([int(x) for x in altCounts])
-                                    altFinal = alt
+                                    altFinal = copy.deepcopy(alt)
                                     snpFinal = '{0}{1}'.format(cols[2][0:-1],alt)
                                     newCols = replaceGenotypeSingle(cols)
 
                                     break
 
-                        if foundAlt == True:                     
-                            newLine = '\t'.join(newCols).replace(newCols[4],','.join(altOrder))
-                            newLineCorrectedCounts = newLine.replace(newCols[7],'AC={0};{1}'.format(','.join([str(alts[x]) for x in altOrder]),str(ref)))
-                            newLineCorrectedSnps = newLineCorrectedCounts.replace(newCols[2],','.join(snpOrder))
+                        if foundAlt == True:
+                            if len(altOrder) == 0:
+                                newLine = '\t'.join(newCols).replace(newCols[4],'.')
+                                newLineCorrectedCounts = newLine.replace(newCols[7],'AC=0;{0}'.format(str(ref)))
+                                newLineCorrectedSnps = newLineCorrectedCounts.replace(newCols[2],','.join(snpOrder))
+                            else:
+
+                                newLine = '\t'.join(newCols).replace(newCols[4],','.join(altOrder))
+                                newLineCorrectedCounts = newLine.replace(newCols[7],'AC={0};{1}'.format(','.join([str(alts[x]) for x in altOrder]),str(ref)))
+                            
+                                newLineCorrectedSnps = newLineCorrectedCounts.replace(newCols[2],','.join(snpOrder))
+
                         else:
                          
                             newLine = '\t'.join(newCols).replace(newCols[4],altFinal)
                             newLineCorrectedCounts = newLine.replace(newCols[7],'AC={0};{1}'.format(str(altCount),str(ref)))
                             newLineCorrectedSnps = newLineCorrectedCounts.replace(newCols[2],snpFinal)+'\n'
+                        if '72' in newCols:
+                            print(newCols)
                         try:
+                            '''
+                            ISSUE-1
+                            '''
+
+                            #print(newLineCorrectedSnps.split('\t'))
+
                             if len(altFinal) == 0 or altFinal == ' ' or len(altOrder)==0:
-                                pass
+                                if '72' in newCols:
+                                    print(newCols)
+                                fixedLine = '\t'.join(newCols).replace(newCols[4],'.').replace(newCols[7],'AC=0;{0}'.format(str(ref)))
+                                if '\n' in fixedLine:
+                                    resolved.write(fixedLine)
+                                else:
+                                    resolved.write(fixedLine + '\n')
+                                
                             else:
-                                resolved.write(newLineCorrectedSnps)
+                                if '72' in newCols:
+                                    print(newCols)
+                                if newLineCorrectedSnps.split('\t')[-1] !=  '':
+                                    if '\n' not in newLineCorrectedSnps:
+                                        resolved.write(newLineCorrectedSnps)
+                                        resolved.write('\n')
+                                    else:
+                                        resolved.write(newLineCorrectedSnps)
+                                else:
+                                    if '\n' not in newLineCorrectedSnps:
+
+                                        resolved.write('\t'.join(newLineCorrectedSnps.split('\t')[0:]))
+                                        resolved.write('\n')
+
+                                    else:
+                                        resolved.write('\t'.join(newLineCorrectedSnps.split('\t')[0:]))
+
                         except UnboundLocalError:
+                            if '72' in newCols:
+                                print('UnboundLocalError',newLineCorrectedSnps)
 
-                            resolved.write(newLineCorrectedSnps)
+                            if newLineCorrectedSnps.split('\t')[-1] != '':
+                                resolved.write(newLineCorrectedSnps)
+                            else:
+                                resolved.write('\t'.join(newLineCorrectedSnps.split('\t')[0:]))
 
+                            
 
         os.system('./strain_phylogenetics/build/find_parsimonious_assignments --tree {0} --vcf filtered_resolved_alt.vcf > filtered_resolved_alt.txt'.format(args['tree']))
 
@@ -938,21 +983,22 @@ if args['dependencies'] != None:
     print('Checking for parsimonious assignment software')
     if os.path.isdir('./strain_phylogenetics') == False:
         print('"strain_phylogenetics" must be in your current working directory. You can download it at https://github.com/yatisht/strain_phylogenetics') 
-    if os.path.isfile('remove_samples.pl') == False:
-        print('./remove_samples.pl must be in your current working directory. You can download it at https://github.com/lgozasht/COVID-19-Lab-Specific-Bias-Filter')
+    if os.path.isfile('remove_samples_edited.pl') == False:
+        print('./remove_samples_edited.pl must be in your current working directory. You can download it at https://github.com/lgozasht/COVID-19-Lab-Specific-Bias-Filter')
 
 print('Identifying included samples')
 if os.path.isfile('samples_in_latest_tree.txt') == True and os.stat("samples_in_latest_tree.txt").st_size > 0:
     print('File exists... Moving on')
 else:
-    os.system('python3.6 filter_vcf_sn.py {1} {0}'.format(args['v'], args['tree']))
+    os.system('python3.6 filter_vcf_sn_edited.py {1} {0}'.format(args['v'], args['tree']))
 
 print('Filtering samples from VCF that do not exist in the provided newick tree')
 
 if os.path.isfile('filtered_unresolved.vcf') == True and os.stat("filtered_unresolved.vcf").st_size > 0:
     print('File exists... Moving on')
 else:
-    os.system("perl remove_samples.pl {0} > filtered_unresolved.vcf".format(args['v']))
+    os.system("perl remove_samples_edited.pl {0} > filtered_unresolved.vcf.pre".format(args['v']))
+    os.sysetem("python correct_vcf_sample_names.py")
 
 print("Indexing missing data")
 missingDic = missingSamples('filtered_unresolved.vcf')
