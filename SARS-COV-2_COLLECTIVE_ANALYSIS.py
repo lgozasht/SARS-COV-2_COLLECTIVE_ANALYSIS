@@ -998,7 +998,7 @@ if os.path.isfile('filtered_unresolved.vcf') == True and os.stat("filtered_unres
     print('File exists... Moving on')
 else:
     os.system("perl remove_samples_edited.pl {0} > filtered_unresolved.vcf.pre".format(args['v']))
-    os.sysetem("python correct_vcf_sample_names.py")
+    os.system("python correct_vcf_sample_names.py")
 
 print("Indexing missing data")
 missingDic = missingSamples('filtered_unresolved.vcf')
