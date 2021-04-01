@@ -20,14 +20,18 @@ with open(sys.argv[2], 'r') as vcf:
         elif '#' in line:
             sourceList = line.split('\t')
             for e in sourceList:
-                    
-                ESPList.append(e)
+                if '|' in e:    
+                    ESPList.append(e.split('|')[1])
+                else:
+                    ESPList.append(e)
+
         else:
             lineList.append(line.split('\t'))
 
 #iterate tree
 for node in t.traverse("preorder"):
     if node.is_leaf() == True:
+        
         leaf = str(node)[3:]
 
         leafDic[leaf] = ''
@@ -35,8 +39,8 @@ count = 0
 finalSourceList = sourceList[0:9]
 for i in range(9,len(sourceList)):
     if ESPList[i] in leafDic:
+        count += 1
         finalSourceList.append(sourceList[i])
-
 
 with open("samples_in_latest_tree.txt",'w') as f:
     for source in finalSourceList:
