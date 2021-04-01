@@ -852,7 +852,7 @@ print('Filtering samples from VCF that do not exist in the provided newick tree'
 if os.path.isfile('filtered_unresolved.vcf') == True and os.stat("filtered_unresolved.vcf").st_size > 0:
     print('File exists... Moving on')
 else:
-    os.system("perl remove_samples_edited.pl {0} > filtered_unresolved.vcf.pre".format(args['v']))
+    os.system("perl remove_samples.pl {0} > filtered_unresolved.vcf.pre".format(args['v']))
     os.system("python correct_vcf_sample_names.py")
 
 
