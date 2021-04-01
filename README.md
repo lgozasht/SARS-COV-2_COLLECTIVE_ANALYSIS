@@ -36,6 +36,8 @@ GISAID metadata file, "*unresolved*" VCF and coorresponding newick tree
 
 **-dependencies**: Check for dependencies
 
+**-threads** *I***: Number of threads to use per association
+
 ### Output:
 
 **final_table.tsv**:
