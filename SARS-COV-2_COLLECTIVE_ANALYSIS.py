@@ -50,7 +50,7 @@ Define functions
 """
 
 def specificAlleles(pars, vcf, sourceList, oriParsCountDic, subParsCountDic, subAccessionDic, oriAccessionDic, accessionToOri, accessionToSub, countryAccessionDic, parsimonyDic, finalDic,countryDic,assocLab,trashDic,globalAltCountDic,mafDic):
-
+    startTime = time.time() 
     refChrom = 'NC_045512v2'  
     #sourceList = []
     sourceDic = {}
@@ -251,7 +251,7 @@ def specificAlleles(pars, vcf, sourceList, oriParsCountDic, subParsCountDic, sub
         print('globalAltCountDic')
     if mafDic is None:
         print('mafDic')
-
+    print('unresolved', time.time()-startTime)
     return finalDic,countryDic,assocLab,trashDic,globalAltCountDic,mafDic 
 
 
@@ -838,7 +838,7 @@ if args['dependencies'] != None:
     print('Checking for parsimonious assignment software')
     if os.path.isdir('./strain_phylogenetics') == False:
         print('"strain_phylogenetics" must be in your current working directory. You can download it at https://github.com/yatisht/strain_phylogenetics') 
-    if os.path.isfile('remove_samples_edited.pl') == False:
+    if os.path.isfile('remove_samples.pl') == False:
         print('./remove_samples_edited.pl must be in your current working directory. You can download it at https://github.com/lgozasht/COVID-19-Lab-Specific-Bias-Filter')
 
 print('Identifying included samples')
@@ -852,7 +852,7 @@ print('Filtering samples from VCF that do not exist in the provided newick tree'
 if os.path.isfile('filtered_unresolved.vcf') == True and os.stat("filtered_unresolved.vcf").st_size > 0:
     print('File exists... Moving on')
 else:
-    os.system("perl remove_samples.pl {0} > filtered_unresolved.vcf.pre".format(args['v']))
+    os.system("perl remove_samples_edited.pl {0} > filtered_unresolved.vcf.pre".format(args['v']))
     os.system("python correct_vcf_sample_names.py")
 
 
