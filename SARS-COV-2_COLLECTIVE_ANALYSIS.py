@@ -1,4 +1,6 @@
-
+import glob
+from subprocess import Popen
+import multiprocessing
 import os 
 import argparse 
 import threading
@@ -6,7 +8,7 @@ import time
 from threading import Thread 
 import copy 
 import re
-
+from readParsimony import parsReader
 
 parser = argparse.ArgumentParser(description='Flag lab and country associated variants in SARS-CoV2 Genomes') 
 parser.add_argument('-m', nargs='?', required=True,help='Path to GISAID metadata file') 
@@ -20,6 +22,8 @@ parser.add_argument('-min_parsimony', nargs='?', required=False, default=4,
                     help='Minimum parsimony for lab and country associations (Default = 4)') 
 parser.add_argument('-dependencies', nargs='?', required=False,default=None,
                     help='Check for dependencies')
+parser.add_argument('-threads', nargs='?', required=False, default=1,
+                    help='Number of threads to use per association (Default = 1)')
 
 
 args = vars(parser.parse_args())
@@ -34,7 +38,6 @@ class ThreadWithReturnValue(Thread):
         Thread.__init__(self, group, target, name, args, kwargs)
         self._return = None
     def run(self):
-        #print(type(self._target))
         if self._target is not None:
             self._return = self._target(*self._args,
                                         **self._kwargs)
@@ -46,203 +49,86 @@ class ThreadWithReturnValue(Thread):
 Define functions
 """
 
-def specificAlleles(pars, vcf, metadata):
+def specificAlleles(pars, vcf, sourceList, oriParsCountDic, subParsCountDic, subAccessionDic, oriAccessionDic, accessionToOri, accessionToSub, countryAccessionDic, parsimonyDic, finalDic,countryDic,assocLab,trashDic,globalAltCountDic,mafDic):
 
     refChrom = 'NC_045512v2'  
-    parsimonyDic = {}
-    sourceList = []
+    #sourceList = []
     sourceDic = {}
-    totalParsimoniousmutationCount = 0
     parsimonySourceDic = {}
     aaChangeDic = {}
     globalRefCountDic = {}
-    globalAltCountDic = {}
+    #globalAltCountDic = {}
     first = True
-    print('Reading parsimony file')
-    with open(pars, 'r') as f:
-       if pars == 'filtered_unresolved.txt':
-            nucs = {'A':' ','G':' ','T':' ','C':' '}
-            for line in f:
-                sp = line.split('\t')
-                if '(hCoV-19' in line[0:10]:
-                    pass
-                elif 'NC_045512v2' not in line:
-                    try:    
-                        if ',' in sp[0]:
-                            preList = [a for a in sp[0].split(',')[1:] if a in nucs]
-                            if sp[0].split(',')[0][-1] in nucs:
-                                i = len(preList) + 2
-                            else:
-                                i = len(preList) + 1
-
-                            pos = sp[0].split(',')[0][1:-1]
-                        else:
-                            i = 2
-                            pos = sp[0][1:-1]
-
-                        '''
-                        Issue-2
-                        '''
-                        print(line)
-                        try:
-                            
-                            if int(sp[i].split('=')[1]) >= int(args['min_parsimony']):
-                                parsimonyDic[pos] = str(sp[i].split('=')[1])
 
 
-                        except ValueError:
-                            print('Warning: possible issue in parsimony output for {0}'.format(sp[0]))
-                    except IndexError:
-                        pass
-                elif int(sp[-1]) >= int(args['min_parsimony']):
-                    parsimonyDic[sp[2]] = sp[-1]
-       else:
-            for line in f:
-                sp = line.split('\t')
-                if '(hCoV-19' in line[0:10]:
-                    pass
-                elif 'NC_045512v2' not in line:
-                    try:    
-                        if ',' in sp[0]:
-                            preList = sp[0].split(',')
-                            i = len(preList) + 1
-                            pos = preList[0][1:-1]
-                        else:
-                            i = 2
-                            pos = sp[0][1:-1]
-                        if int(sp[i].split('=')[1]) >= int(args['min_parsimony']):
-                            parsimonyDic[pos] = str(sp[i].split('=')[1])
-                    except IndexError:
-                        pass
-                elif int(sp[-1]) >= int(args['min_parsimony']):
-                    parsimonyDic[sp[2]] = sp[-1]
-
-
-
-    print('Reading VCF')
-    mafDic = {}
     alleleX = {}
-    finalDic = {}
-    with open(vcf, 'r') as vcf:
-        for line in vcf:
-            if '##' in line:
-                pass
-            elif '#' in line:
-                sourceList = line.split('\t')
-            else:
-                cols = line.split('\t')
-                (pos, mut) = (cols[1], cols[2])
-                if pos in parsimonyDic:
-                    total = len(cols[9:])
-                    alt = sum(int(x) > 0 for x in cols[9:] if x.isdigit() == True)
-                    ref = cols[9:].count('0')
-                    #total = int(cols[7].split(';')[1].split('=')[1])
-                    preAlt = cols[7].split(';')[0].split('=')[1]
-                    mafDic[mut] = {}
-                    globalAltCountDic[mut] = {}
-                    alleleX[mut] = {}
-                    finalDic[mut] = {}
-                    #new shit
-                    totalAlt = 0
-                    if ',' in preAlt:
-                        #totalAlt = sum([int(i) for i in preAlt.split(',')])
-                        alleles = cols[4].split(',')
-                        #preAltCounts = preAlt.split(',')
-                        for i in range(0,len(alleles)):
-                            finalDic[mut][alleles[i]] = ''
-                            globalAltCountDic[mut][alleles[i]] = sum(int(x)== (i+1) for x in cols[9:] if x.isdigit() == True)
-                            totalAlt += globalAltCountDic[mut][alleles[i]]
-                            alleleX[mut][int(i+1)] = alleles[i]
-                    else:
-                        globalAltCountDic[mut][cols[4].strip()] = sum(int(x) > 0 for x in cols[9:] if x.isdigit() == True)
-
-                        alleleX[mut][int(1)] = cols[4].strip()
-                        finalDic[mut][cols[4].strip()] = ''
-
-                        totalAlt = int(globalAltCountDic[mut][cols[4].strip()])
-                    #ref = total - totalAlt
-                    globalRefCountDic[mut] = ref
-                    for alt in globalAltCountDic[mut]:
+    for line in vcf: 
+        if '##' in line:
+            pass
+        else:
+            cols = line.split('\t')
                 
-                        MAF = float(globalAltCountDic[mut][alt])/float(ref + totalAlt)
-                        mafDic[mut][alt] = MAF
+            (pos, mut) = (cols[1], cols[2])
+            if pos in parsimonyDic:
+                total = len(cols[9:])
+                alt = sum(int(x) > 0 for x in cols[9:] if x.isdigit() == True)
+                ref = cols[9:].count('0')
+                preAlt = cols[7].split(';')[0].split('=')[1]
+                mafDic[mut] = {}
+                globalAltCountDic[mut] = {}
+                alleleX[mut] = {}
+                finalDic[mut] = {}
+                totalAlt = 0
+                if ',' in preAlt:
+                    alleles = cols[4].split(',')
+                    for i in range(0,len(alleles)):
+                        finalDic[mut][alleles[i]] = ''
+                        globalAltCountDic[mut][alleles[i]] = sum(int(x)== (i+1) for x in cols[9:] if x.isdigit() == True)
+                        totalAlt += globalAltCountDic[mut][alleles[i]]
+                        alleleX[mut][int(i+1)] = alleles[i]
+                else:
+                    globalAltCountDic[mut][cols[4].strip()] = sum(int(x) > 0 for x in cols[9:] if x.isdigit() == True)
+
+                    alleleX[mut][int(1)] = cols[4].strip()
+                    finalDic[mut][cols[4].strip()] = ''
+
+                    totalAlt = int(globalAltCountDic[mut][cols[4].strip()])
+                globalRefCountDic[mut] = ref
+                for alt in globalAltCountDic[mut]:
+                
+                    MAF = float(globalAltCountDic[mut][alt])/float(ref + totalAlt)
+                    mafDic[mut][alt] = MAF
 
 
-                    parsimonySourceDic[mut] = {}
-                    for i in range(9,len(cols)):
-                        epiId = sourceList[i].split('|')[0]
-                        if 'EPI_ISL_' in epiId:
-                            pass
+                parsimonySourceDic[mut] = {}
+                for i in range(9,len(cols)):
+                    epiId = sourceList[i][0]
+
+                    #epiId = sourceList[i].split('|')[0]
+                    if 'EPI_ISL_' in epiId:
+                        pass
+                    else:
+                        epiId = sourceList[i].split('|')[1]
+                    if ':' in cols[i]:
+                        parsimonySourceDic[mut][epiId] = cols[i].split(':')[0]
+                    else:
+                        if cols[i].strip() == '.':
+                            parsimonySourceDic[mut][epiId]=0
                         else:
-                            epiId = sourceList[i].split('|')[1]
-                        if ':' in cols[i]:
-                            parsimonySourceDic[mut][epiId] = cols[i].split(':')[0]
-                        else:
-                            if cols[i].strip() == '.':
-                                parsimonySourceDic[mut][epiId]=0
-                            else:
-                                parsimonySourceDic[mut][epiId] = cols[i]
+                            parsimonySourceDic[mut][epiId] = cols[i]
 
 
-                    info = cols[7]
-                    infoParts = dict([ part.split('=') for part in info.split(';')  ])
-                    if ('AACHANGE' in infoParts):
-                        aaChangeDic[mut] = infoParts['AACHANGE']
+                info = cols[7]
+                infoParts = dict([ part.split('=') for part in info.split(';')  ])
+                if ('AACHANGE' in infoParts):
+                    aaChangeDic[mut] = infoParts['AACHANGE']
 
-    oriParsCountDic = {}
-    subParsCountDic = {}
-    subAccessionDic = {}
-    oriAccessionDic = {}
-    start_time2 = time.time()
-    print('Reading metadata')
-    accessionToOri = {}
-    accessionToSub = {}
-    countryAccessionDic = {}
-
-    with open(metadata, 'r') as meta:
-        for line in meta:
-            sp = line.split('\t')
-            if 'strain' == sp[0]:
-                indexPosOri = sp.index('originating_lab')
-                indexPosSub = sp.index('submitting_lab')
-                indexPosCountry = sp.index('country')
-
-            else:
-                try:
-                    if sp[indexPosOri] not in oriAccessionDic:
-                        oriAccessionDic[sp[indexPosOri]] = [sp[2]]
-                        accessionToOri[sp[2]] = sp[indexPosOri] 
-                    else:
-                        oriAccessionDic[sp[indexPosOri]].append(sp[2])
-                        accessionToOri[sp[2]] = sp[indexPosOri]
-
-
-                    if sp[indexPosSub] not in subAccessionDic:
-                        subAccessionDic[sp[indexPosSub]] = [sp[2]]
-                        accessionToSub[sp[2]] = sp[indexPosOri]
-
-                    else:
-                        subAccessionDic[sp[indexPosSub]].append(sp[2])
-                        accessionToSub[sp[2]] = sp[indexPosOri]
-
-                    if sp[indexPosCountry] not in countryAccessionDic:
-                        countryAccessionDic[sp[indexPosCountry]] = [sp[2]]
-
-                    else:
-                        countryAccessionDic[sp[indexPosCountry]].append(sp[2])
-
-                except IndexError:
-                    pass
-    trashDic = {}
     susDic = {}
     compDic = {}
     otherDic = {}
-    altDic = {}
+    #altDic = {}
     refDic = {}
     start_time3 = time.time()
-    assocLab = {}
-    #print(finalDic)
-    #printAll = True
     for ori in subAccessionDic:
         for snp in parsimonySourceDic:
             refCount = 0
@@ -259,20 +145,13 @@ def specificAlleles(pars, vcf, metadata):
                     if int(parsimonySourceDic[snp][accession]) == 0:
                         refCount += 1
                     elif int(parsimonySourceDic[snp][accession]) > 0:
-                        #if int(parsimonySourceDic[snp][accession]) >1:
-                            #print(int(parsimonySourceDic[snp][accession]))
-                        #print(alleleX[snp])
                         if int(parsimonySourceDic[snp][accession]) not in altCount:
                             altCount[alleleX[snp][int(parsimonySourceDic[snp][accession])]] = 1
-                            #print(altCount)
                         else:
                             altCount[alleleX[snp][int(parsimonySourceDic[snp][accession])]] += 1 
-                            #print(altCount)
 
                 except KeyError:
-                    #print(altCount)
                     pass
-            #print(altCount)
 
             for allele in altCount:
                 #finalDic[snp][allele] = ''
@@ -283,7 +162,7 @@ def specificAlleles(pars, vcf, metadata):
                         if int(globalAltCountDic[snp][allele]) > 0:
                             if (refCount > 0 or altCount[allele] > 0) and (float(altCount[allele])/float(globalAltCountDic[snp][allele]) > .8):
                             #oddsratio, pvalue = stats.fisher_exact(np.array([[globalRefCountDic[snp]-refCount,refCount],[globalAltCountDic[snp][allele]-altCount[allele],altCount[allele]]]))
-                            #print('This might work')
+                            #
                                 if allele not in compDic[snp] or float(altCount[allele])/float(globalAltCountDic[snp][allele]) > compDic[snp][allele]:
                                     compDic[snp][allele] = float(altCount[allele])/float(globalAltCountDic[snp][allele])
                                     assocLab[snp][allele] = ori
@@ -294,8 +173,6 @@ def specificAlleles(pars, vcf, metadata):
                         pass
                 except KeyError:
                     pass
-        #print(altCount)
-    #print(finalDic)
     for ori in oriAccessionDic:
     
         for snp in parsimonySourceDic:
@@ -333,7 +210,6 @@ def specificAlleles(pars, vcf, metadata):
                         pass
                 except KeyError:
                     pass
-    countryDic = {}
     for ori in countryAccessionDic:
         for snp in parsimonySourceDic:
             refCount = 0
@@ -376,194 +252,114 @@ def specificAlleles(pars, vcf, metadata):
     if mafDic is None:
         print('mafDic')
 
-
     return finalDic,countryDic,assocLab,trashDic,globalAltCountDic,mafDic 
 
 
-def associate(inputType, vcf, pars, meta, missingDic):
+def associate(inputType, vcf, sourceList, pars, missingDic,oriParsCountDic, subParsCountDic, subAccessionDic, oriAccessionDic, accessionToOri, accessionToSub, countryAccessionDic, parsimonyDic,dataDic, finalDic):
+    
     refChrom = 'NC_045512v2'
-    parsimonyDic = {}
-    sourceList = []
     sourceDic = {}
-    dataDic = {}
 
-    totalParsimoniousmutationCount = 0
     parsimonySourceDic = {}
     aaChangeDic = {}
     globalRefCountDic = {}
     globalAltCountDic = {}
     first = True
-    print('{0}: Reading parsimony file'.format(inputType))
-    with open(pars, 'r') as f:
-        for line in f:
-            sp = line.split('\t')
-            if '(hCoV-19' in line[0:10]:
-                pass
-            elif 'NC_045512v2' not in line:
-                try:    
-                    if ',' in sp[0]:
-                        preList = sp[0].split(',')  
-                        i = len(preList) + 1
-                        pos = preList[0][1:-1]
-                    else:
-                        i = 2
-                        pos = sp[0][1:-1]
-                    if int(sp[i].split('=')[1]) >= int(args['min_parsimony']):
-                        parsimonyDic[pos] = str(sp[i].split('=')[1])
-                except IndexError:
-                    pass
-                    #print(line)
-            elif int(sp[-1]) >= int(args['min_parsimony']):
-                parsimonyDic[sp[2]] = sp[-1]
 
     start_time = time.time()
-    print('{0}: Reading VCF'.format(inputType))
     mafDic = {}
     if len(missingDic) == 0:
-        with open(vcf, 'r') as vcf:
-            for line in vcf:
-                if '##' in line:
-                    pass
-                elif '#' in line:
-                    sourceList = line.split('\t')
-                else:
-                    cols = line.split('\t')
-                    (pos, mut) = (cols[1], cols[2])
-                    if pos in parsimonyDic:
-                        #total = int(cols[7].split(';')[1].split('=')[1])
-                        total = len(cols[9:])
-                        alt = sum(int(x) > 0 for x in cols[9:] if x.isdigit() == True)
-                        ref = cols[9:].count('0')
+        for line in vcf:
+            if '##' in line:
+                pass
+            else:
+                cols = line.split('\t')
+                (pos, mut) = (cols[1], cols[2])
+                if pos in parsimonyDic:
+                    total = len(cols[9:])
+                    alt = sum(int(x) > 0 for x in cols[9:] if x.isdigit() == True)
+                    ref = cols[9:].count('0')
 
-                        globalRefCountDic[mut] = ref
-                        globalAltCountDic[mut] = alt
-                        MAF = float(alt)/(float(alt)+ float(ref))
-                        mafDic[mut] = MAF
+                    globalRefCountDic[mut] = ref
+                    globalAltCountDic[mut] = alt
+                    MAF = float(alt)/(float(alt)+ float(ref))
+                    mafDic[mut] = MAF
 
 
-                        parsimonySourceDic[mut] = {}
-                        for i in range(9,len(cols)):
-                            epiId = sourceList[i].split('|')[0]
-                            if 'EPI_ISL_' in epiId:
-                                pass
+                    parsimonySourceDic[mut] = {}
+                    for i in range(9,len(cols)):
+                        epiId = sourceList[i].strip()
+
+                        #epiId = sourceList[i].split('|')[0]
+                        if 'EPI_ISL_' in epiId:
+                            pass
+                        else:
+                            epiId = sourceList[i].split('|')[1]
+                        if ':' in cols[i]:
+                            parsimonySourceDic[mut][epiId] = cols[i].split(':')[0]
+                        else:
+                            if cols[i].strip() == '.':
+                                parsimonySourceDic[mut][epiId]=0
                             else:
-                                epiId = sourceList[i].split('|')[1]
-                            if ':' in cols[i]:
-                                parsimonySourceDic[mut][epiId] = cols[i].split(':')[0]
-                            else:
-                                if cols[i].strip() == '.':
-                                    parsimonySourceDic[mut][epiId]=0
-                                else:
-                                    parsimonySourceDic[mut][epiId] = cols[i]
+                                parsimonySourceDic[mut][epiId] = cols[i]
 
 
-                        info = cols[7]
-                        infoParts = dict([ part.split('=') for part in info.split(';')  ])
-                        if ('AACHANGE' in infoParts):
-                            aaChangeDic[mut] = infoParts['AACHANGE']
+                    info = cols[7]
+                    infoParts = dict([ part.split('=') for part in info.split(';')  ])
+                    if ('AACHANGE' in infoParts):
+                        aaChangeDic[mut] = infoParts['AACHANGE']
     else:
-        with open(vcf, 'r') as vcf:
-            for line in vcf:
-                if '##' in line:
-                    pass
-                elif '#' in line:
-                    sourceList = line.split('\t')
-                else:
-                    cols = line.split('\t')
-                    (pos, mut) = (cols[1], cols[2])
-                    if pos in parsimonyDic:
-                        #total = int(cols[7].split(';')[1].split('=')[1])
-                        total = len(cols[9:])
+        for line in vcf:
+            if '##' in line:
+                pass
+            elif '#' in line:
+                sourceList = line.split('\t')
+            else:
+                cols = line.split('\t')
+                (pos, mut) = (cols[1], cols[2])
+                if pos in parsimonyDic:
+                    total = len(cols[9:])
                         
 
-                        globalRefCountDic[mut] = 0
-                        globalAltCountDic[mut] = 0
+                    globalRefCountDic[mut] = 0
+                    globalAltCountDic[mut] = 0
                     
 
 
-                        parsimonySourceDic[mut] = {}
-                        for i in range(9,len(cols)):
-                            epiId = sourceList[i].split('|')[0]
-                            if 'EPI_ISL_' in epiId:
-                                pass
-                            else:
-                                epiId = sourceList[i].split('|')[1]
-                            if ':' in cols[i]:
-                                parsimonySourceDic[mut][epiId] = cols[i].split(':')[0]
-                            else:
-                                if cols[i].strip() == '.' or i in missingDic[pos]:
-                                    #print(i,cols[i].strip())
-                                    #if int(cols[i].strip())>0:
-                                    #    test0+=1
-                                    parsimonySourceDic[mut][epiId]=0
-                                else:
-
-                                    parsimonySourceDic[mut][epiId] = cols[i]
-                                    if int(cols[i].strip())>0:
-                                        globalAltCountDic[mut]+=1
-                                    else:
-                                        globalRefCountDic[mut]+=1
-                        alt = globalAltCountDic[mut]
-                        ref = globalRefCountDic[mut]
-                        MAF = float(alt)/(float(alt)+ float(ref))
-                        mafDic[mut] = MAF
-
-                        #print('missing alt alleles',test0,'\n','alt alleles',test1)
-
-                        info = cols[7]
-                        try:
-                            infoParts = dict([ part.split('=') for part in info.split(';')  ])
-                            if ('AACHANGE' in infoParts):
-                                aaChangeDic[mut] = infoParts['AACHANGE']
-                        except ValueError:
+                    parsimonySourceDic[mut] = {}
+                    for i in range(9,len(cols)):
+                        epiId = sourceList[i].strip()
+                        #epiId = sourceList[i].split('|')[0]
+                        if 'EPI_ISL_' in epiId:
                             pass
+                        else:
+                            epiId = sourceList[i].split('|')[1]
+                        if ':' in cols[i]:
+                            parsimonySourceDic[mut][epiId] = cols[i].split(':')[0]
+                        else:
+                            if cols[i].strip() == '.' or i in missingDic[pos]:
+                                parsimonySourceDic[mut][epiId]=0
+                            else:
+
+                                parsimonySourceDic[mut][epiId] = cols[i]
+                                if int(cols[i].strip())>0:
+                                    globalAltCountDic[mut]+=1
+                                else:
+                                    globalRefCountDic[mut]+=1
+                    alt = globalAltCountDic[mut]
+                    ref = globalRefCountDic[mut]
+                    MAF = float(alt)/(float(alt)+ float(ref))
+                    mafDic[mut] = MAF
+
+
+                    info = cols[7]
+                    try:
+                        infoParts = dict([ part.split('=') for part in info.split(';')  ])
+                        if ('AACHANGE' in infoParts):
+                            aaChangeDic[mut] = infoParts['AACHANGE']
+                    except ValueError:
+                        pass
     print('VCF took {0} seconds'.format(time.time() - start_time))
-
-    oriParsCountDic = {}
-    subParsCountDic = {}
-    subAccessionDic = {}
-    oriAccessionDic = {}
-    start_time2 = time.time()
-    print('Reading metadata')
-    accessionToOri = {}
-    accessionToSub = {}
-    countryAccessionDic = {}
-
-    with open(meta, 'r') as meta:
-        for line in meta:
-            sp = line.split('\t')
-            if 'strain' == sp[0]:
-                indexPosOri = sp.index('originating_lab')
-                indexPosSub = sp.index('submitting_lab')
-                indexPosCountry = sp.index('country')
-
-            else:
-                try:
-                    if sp[indexPosOri] not in oriAccessionDic:
-                        oriAccessionDic[sp[indexPosOri]] = [sp[2]]
-                        accessionToOri[sp[2]] = sp[indexPosOri] 
-                    else:
-                        oriAccessionDic[sp[indexPosOri]].append(sp[2])
-                        accessionToOri[sp[2]] = sp[indexPosOri]
-
-
-                    if sp[indexPosSub] not in subAccessionDic:
-                        subAccessionDic[sp[indexPosSub]] = [sp[2]]
-                        accessionToSub[sp[2]] = sp[indexPosOri]
-
-                    else:
-                        subAccessionDic[sp[indexPosSub]].append(sp[2])
-                        accessionToSub[sp[2]] = sp[indexPosOri]
-
-                    if sp[indexPosCountry] not in countryAccessionDic:
-                        countryAccessionDic[sp[indexPosCountry]] = [sp[2]]
-
-                    else:
-                        countryAccessionDic[sp[indexPosCountry]].append(sp[2])
-
-                except IndexError:
-                    pass
-    print('metadata took {0} seconds'.format((time.time() - start_time2)))
 
 
     print('Working...')
@@ -575,7 +371,7 @@ def associate(inputType, vcf, pars, meta, missingDic):
     refDic = {}
     start_time3 = time.time()
     assocLab = {}
-    finalDic = {}
+    #finalDic = {}
 
     for ori in subAccessionDic:
         for snp in parsimonySourceDic:
@@ -594,8 +390,6 @@ def associate(inputType, vcf, pars, meta, missingDic):
                     if int(globalAltCountDic[snp]) > 0:
 
                         if (refCount > 0 or altCount > 0) and (float(altCount)/float(globalAltCountDic[snp]) > .8):
-                       # oddsratio, pvalue = stats.fisher_exact(np.array([[globalRefCountDic[snp]-refCount,refCount],[globalAltCountDic[snp]-altCount,altCount]]))
-                        #print('This might work')
 
                             if snp not in compDic or float(altCount)/float(globalAltCountDic[snp]) > compDic[snp]:
                                 compDic[snp] = float(altCount)/float(globalAltCountDic[snp])
@@ -642,10 +436,8 @@ def associate(inputType, vcf, pars, meta, missingDic):
                     pass
             except KeyError:
                 pass
-            #if printAll == True and snp not in finalDic:
-            #    finalDic[snp] = True
 
-    print('Finished {1} association in {0} seconds'.format(time.time() - start_time3,inputType))
+   # print('Finished {1} association in {0} seconds'.format(time.time() - start_time3,vcf.name))
 
 
 
@@ -687,7 +479,7 @@ def associate(inputType, vcf, pars, meta, missingDic):
 
         for line in primeFile:
  
-            for snp in finalDic:
+            for snp in finalDic.keys():
   
                 sp = line.split('\t')
                 if ',' in snp:
@@ -708,7 +500,9 @@ def associate(inputType, vcf, pars, meta, missingDic):
                         primerDic[snp] = sp[3]
                     else:
                         primerDic[snp] += (',' + sp[3])
-    for snp in finalDic:
+    for snp in finalDic.keys():
+        if snp not in globalAltCountDic:
+            continue
         primer = primerDic[snp] if snp in primerDic else 'NA'
         primeroverlap = primerOverlap[snp] if snp in primerOverlap else 'NA'
    
@@ -726,15 +520,12 @@ def associate(inputType, vcf, pars, meta, missingDic):
                                 'parsimonyDic':parsimonyDic[pos].strip('\n'), 'globalAltCountDic':str(globalAltCountDic[snp]),
                                 'mafDic':str(mafDic[snp]),'primeroverlap':primeroverlap,'primer':primer,'countryOri':countryOri,'countryAt':countryAt,
                                 'assoc':assoc,'assocValue':assocValue}
-    #print(dataDic)
     return dataDic, finalDic
 
 
 
 def replaceGenotype(cols,replacements,alts):
     try:
-        #replacements['.'] = '0'
-        #print(replacements)
         if len(replacements) > 0:
             genotypes = re.sub('({})'.format('|'.join(map(re.escape, replacements.keys()))), lambda m: replacements[m.group()], ','.join(cols[9:]))
         else:
@@ -742,7 +533,6 @@ def replaceGenotype(cols,replacements,alts):
 
     except KeyError:
         print('Key Error in replaceGenotype')
-        print(altDic,cols[0:9])
     return [str(x) for x in cols[0:9]+genotypes.split(',')]
 
 def replaceGenotypeSingle(cols):
@@ -804,8 +594,6 @@ def resolve_alt():
                                 foundAlt = True
                         updatedCols = cols
                         if len(reorganizeAlleleDic.keys()) == len(altList):
-                            if '1078' in line:
-                                print(line) 
                             resolved.write(line.replace(cols[7],'AC=0;{0}'.format(ref)))
                             
                             continue
@@ -885,18 +673,10 @@ def resolve_alt():
                             newLine = '\t'.join(newCols).replace(newCols[4],altFinal)
                             newLineCorrectedCounts = newLine.replace(newCols[7],'AC={0};{1}'.format(str(altCount),str(ref)))
                             newLineCorrectedSnps = newLineCorrectedCounts.replace(newCols[2],snpFinal)+'\n'
-                        if '72' in newCols:
-                            print(newCols)
                         try:
-                            '''
-                            ISSUE-1
-                            '''
 
-                            #print(newLineCorrectedSnps.split('\t'))
 
                             if len(altFinal) == 0 or altFinal == ' ' or len(altOrder)==0:
-                                if '72' in newCols:
-                                    print(newCols)
                                 fixedLine = '\t'.join(newCols).replace(newCols[4],'.').replace(newCols[7],'AC=0;{0}'.format(str(ref)))
                                 if '\n' in fixedLine:
                                     resolved.write(fixedLine)
@@ -904,8 +684,6 @@ def resolve_alt():
                                     resolved.write(fixedLine + '\n')
                                 
                             else:
-                                if '72' in newCols:
-                                    print(newCols)
                                 if newLineCorrectedSnps.split('\t')[-1] !=  '':
                                     if '\n' not in newLineCorrectedSnps:
                                         resolved.write(newLineCorrectedSnps)
@@ -922,8 +700,6 @@ def resolve_alt():
                                         resolved.write('\t'.join(newLineCorrectedSnps.split('\t')[0:]))
 
                         except UnboundLocalError:
-                            if '72' in newCols:
-                                print('UnboundLocalError',newLineCorrectedSnps)
 
                             if newLineCorrectedSnps.split('\t')[-1] != '':
                                 resolved.write(newLineCorrectedSnps)
@@ -979,6 +755,85 @@ def get_index_positions(list_of_elems, element):
             break
     return index_pos_list
 
+def splitFiles(vcf,threads):
+    print("Reading VCFs")
+    lineList = []
+    finalLineList = []
+    lineCut = int(30000.0/float(threads))
+    with open(vcf, 'r') as f:
+        for line in f:
+            if '##' in line:
+                pass
+            elif '#' in line:
+                sourceLine = line.split('\t')
+            else:
+                lineList.append(line)
+    k = 0
+    new = True
+    for i in range(len(lineList)):
+        l = k + 1
+        if new == True:
+            finalLineList.append([])
+            new = False
+        try:
+            finalLineList[k].append(lineList[i])
+            
+            if i > 0 and i % lineCut == 0:
+                k += 1
+                new = True
+        except IndexError:
+            break
+    return sourceLine, finalLineList
+
+def readMetadata(metadata):
+
+    oriParsCountDic = {}
+    subParsCountDic = {}
+    subAccessionDic = {}
+    oriAccessionDic = {}
+    start_time2 = time.time()
+    print('Reading metadata')
+    accessionToOri = {}
+    accessionToSub = {}
+    countryAccessionDic = {}
+
+    with open(metadata, 'r') as meta:
+        for line in meta:
+            sp = line.split('\t')
+            if 'strain' == sp[0]:
+                indexPosOri = sp.index('originating_lab')
+                indexPosSub = sp.index('submitting_lab')
+                indexPosCountry = sp.index('country')
+
+            else:
+                try:
+                    if sp[indexPosOri] not in oriAccessionDic:
+                        oriAccessionDic[sp[indexPosOri]] = [sp[2]]
+                        accessionToOri[sp[2]] = sp[indexPosOri] 
+                    else:
+                        oriAccessionDic[sp[indexPosOri]].append(sp[2])
+                        accessionToOri[sp[2]] = sp[indexPosOri]
+
+
+                    if sp[indexPosSub] not in subAccessionDic:
+                        subAccessionDic[sp[indexPosSub]] = [sp[2]]
+                        accessionToSub[sp[2]] = sp[indexPosOri]
+
+                    else:
+                        subAccessionDic[sp[indexPosSub]].append(sp[2])
+                        accessionToSub[sp[2]] = sp[indexPosOri]
+
+                    if sp[indexPosCountry] not in countryAccessionDic:
+                        countryAccessionDic[sp[indexPosCountry]] = [sp[2]]
+
+                    else:
+                        countryAccessionDic[sp[indexPosCountry]].append(sp[2])
+
+                except IndexError:
+                    pass
+    print('metadata took {0} seconds'.format((time.time() - start_time2)))
+    return oriParsCountDic, subParsCountDic, subAccessionDic, oriAccessionDic, accessionToOri, accessionToSub, countryAccessionDic
+
 if args['dependencies'] != None:
     print('Checking for parsimonious assignment software')
     if os.path.isdir('./strain_phylogenetics') == False:
@@ -990,7 +845,7 @@ print('Identifying included samples')
 if os.path.isfile('samples_in_latest_tree.txt') == True and os.stat("samples_in_latest_tree.txt").st_size > 0:
     print('File exists... Moving on')
 else:
-    os.system('python3.6 filter_vcf_sn_edited.py {1} {0}'.format(args['v'], args['tree']))
+    os.system('python3.6 filter_vcf_sn.py {1} {0}'.format(args['v'], args['tree']))
 
 print('Filtering samples from VCF that do not exist in the provided newick tree')
 
@@ -1000,15 +855,17 @@ else:
     os.system("perl remove_samples_edited.pl {0} > filtered_unresolved.vcf.pre".format(args['v']))
     os.system("python correct_vcf_sample_names.py")
 
+
 print("Indexing missing data")
 missingDic = missingSamples('filtered_unresolved.vcf')
 
 print('Resolving ambiguities')
 
+
     
-t1 = threading.Thread(target=resolve_ref) 
-t2 = threading.Thread(target=resolve_alt)
-t3 = threading.Thread(target=unresolved) 
+t1 = multiprocessing.Process(target=resolve_ref) 
+t2 = multiprocessing.Process(target=resolve_alt)
+t3 = multiprocessing.Process(target=unresolved) 
 
 
 t1.start() 
@@ -1019,21 +876,84 @@ t1.join()
 t2.join()
 t3.join() 
     
+
+print('Reading metadata')
+oriParsCountDic, subParsCountDic, subAccessionDic, oriAccessionDic, accessionToOri, accessionToSub, countryAccessionDic = readMetadata(args['m'])
+
+print('Reading parsimony')
+altParsDic = parsReader('filtered_resolved_alt.txt',args['min_parsimony'])
+refParsDic = parsReader('filtered_resolved_ref.txt',args['min_parsimony'])
+unResParsDic = parsReader('filtered_unresolved.txt',args['min_parsimony'])
+
+print("Dividing VCFs")
+
+sourceAlt, lineListAlt = splitFiles('filtered_resolved_alt.vcf',int(args['threads']))
+sourceRef, lineListRef = splitFiles('filtered_resolved_ref.vcf',int(args['threads']))
+sourceUnRes, lineListUnRes = splitFiles('filtered_unresolved.vcf',int(args['threads']))
+
+
+fileCount = len(lineListUnRes)
+
+#thread an int
 print('Performing associations')
+print('Using {0} threads per association... so a total of {1} threads'.format(str(args['threads']),str(int(args['threads'])*3)))
 
-assocAlt = ThreadWithReturnValue(target = associate, args = ('alternate_resolved','filtered_resolved_alt.vcf',
-                                                                 'filtered_resolved_alt.txt',args['m'], {}))
-assocRef = ThreadWithReturnValue(target = associate, args = ('reference_resolved','filtered_resolved_ref.vcf',
-                                                                 'filtered_resolved_ref.txt',args['m'],missingDic))
-alleleSpcecific = ThreadWithReturnValue(target = specificAlleles, args = ('filtered_unresolved.txt','filtered_unresolved.vcf',args['m']))
+AltThreads = []
+refThreads = []
+allSpecThreads = []
 
-assocAlt.start()
-assocRef.start()
-alleleSpcecific.start()
 
-altDic,finalDicAlt = assocAlt.join()
-refDic,finalDicRef = assocRef.join()
-finalAlleles,countryDic,assocLab,trashDic,globalAltCountDic,mafDic = alleleSpcecific.join()
+manager = multiprocessing.Manager()
+
+altDic = manager.dict()
+
+finalDicAlt = manager.dict()
+refDic = manager.dict()
+finalDicRef = manager.dict()
+finalAlleles = manager.dict()
+countryDic= manager.dict()
+assocLab = manager.dict()
+trashDic=manager.dict()
+globalAltCountDic = manager.dict()
+mafDic = manager.dict()
+
+#'filtered_resolved_ref.vcf_{0}'.format(str(i+1)),
+#'filtered_resolved_alt.vcf_{0}'.format(str(i+1)),
+#'filtered_unresolved.vcf_{0}'.format(str(i+1)),
+
+start_time = time.time()
+for i in range(fileCount):
+    assocAlt = multiprocessing.Process(target = associate, args = ('alternate_resolved', lineListAlt[i], sourceAlt,
+                                                                 'filtered_resolved_alt.txt', {}, oriParsCountDic, subParsCountDic,
+                                                                  subAccessionDic, oriAccessionDic, accessionToOri, accessionToSub, 
+                                                                  countryAccessionDic, altParsDic, altDic, finalDicAlt))
+    assocRef = multiprocessing.Process(target = associate, args = ('reference_resolved', lineListRef[i], sourceRef,
+                                                                 'filtered_resolved_ref.txt',missingDic,oriParsCountDic, subParsCountDic,
+                                                                  subAccessionDic, oriAccessionDic, accessionToOri, accessionToSub, 
+                                                                  countryAccessionDic, refParsDic, refDic, finalDicRef))
+    alleleSpcecific = multiprocessing.Process(target = specificAlleles, args = ('filtered_unresolved.txt', lineListUnRes[i], sourceUnRes,
+                                                                               oriParsCountDic, subParsCountDic, subAccessionDic, oriAccessionDic, 
+                                                                               accessionToOri, accessionToSub, countryAccessionDic, allSpecThreads,
+                                                                               finalAlleles, countryDic, assocLab, trashDic, globalAltCountDic, mafDic))
+
+    assocAlt.start()
+    assocRef.start()
+    alleleSpcecific.start()
+    AltThreads.append(assocAlt)
+    refThreads.append(assocRef)
+    allSpecThreads.append(alleleSpcecific)
+
+for i in range(fileCount):
+    AltThreads[i].join()
+
+    refThreads[i].join()
+
+
+    allSpecThreads[i].join()
+
+print(time.time()-start_time)
+
+
 
 refStarts = {}
 finalAlleles2 = {} 
